@@ -1,7 +1,7 @@
-import { ChevronRight, ExpandMore } from '@mui/icons-material';
+import { ChevronRight, ExpandMore, ThirtyFpsSelectSharp } from '@mui/icons-material';
 import { TreeItem, TreeView } from '@mui/lab';
-import { Box, Container, Grid, LinearProgress, Typography } from '@mui/material';
-import React from 'react';
+import { Box, Container, Grid, LinearProgress, Typography, useScrollTrigger } from '@mui/material';
+import React, { SyntheticEvent } from 'react';
 import { ICategory, SkillDictionaryItem } from '../../models/ICategory';
 import { IUser } from '../../models/IUser';
 
@@ -14,6 +14,7 @@ interface SkillsMatrixState {
   error: any;
   isLoaded: boolean;
   users: Array<IUser>;
+  filteredUsers: Array<IUser>
   categories: ICategory;
   skillDictionary: Array<SkillDictionaryItem>;
 }
@@ -28,6 +29,7 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
       error: null,
       isLoaded: false,
       users: Array<IUser>(),
+      filteredUsers: Array<IUser>(),
       categories: {
         name: '',
         children: Array<ICategory>(),
@@ -89,11 +91,12 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
         error: error,
         isLoaded: true,
         users: users,
+        filteredUsers: users,
       });
   }
 
   //a recursive function that we can use to build our tree view
-  buildTreeView(categoryObject: ICategory) {
+  buildCategoryView(categoryObject: ICategory) {
 
     //if the category object has children then we want to return a TreeItem with the relevant content and call this function again to see if we have gotten to the end of the recursive list
     if (categoryObject.children) {
@@ -104,7 +107,7 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
           return (
   
             <TreeItem nodeId={categoryChild.id.toString()} label={categoryChild.name}>
-              {this.buildTreeView(categoryChild)}
+              {this.buildCategoryView(categoryChild)}
             </TreeItem>
           );
         })
@@ -120,7 +123,7 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
   }
 
   //a function that will be used to get a list of users
-  buildUserList(users: Array<IUser>, skillDictionary: Array<SkillDictionaryItem>) {
+  buildUserView(users: Array<IUser>, skillDictionary: Array<SkillDictionaryItem>) {
 
     return ( 
       users.map( (user, index) => {
@@ -151,30 +154,59 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
     );
   }
 
+  filterUsers(users: Array<IUser>, skillDictionary: Array<SkillDictionaryItem>, nodeId: string) {
+
+    if (skillDictionary.filter(skill => skill.id.toString() === nodeId).length > 0) {
+
+      const filteredUsers = users.filter(user => user.scores.filter(skill => skill.category_id.toString() === nodeId).length > 0);
+
+      this.setState({
+        filteredUsers: filteredUsers,
+      })
+    } 
+    else {
+      
+      this.setState({
+        filteredUsers: users,
+      });
+    }
+  }
+
+  checkLoaded(isLoaded: boolean, categoryView: JSX.Element[] | null, userView: JSX.Element[] | null) {
+
+    return (isLoaded && categoryView && userView && categoryView.length > 0 && userView.length > 0);
+  }
+
   render() {
 
     const categories: ICategory = this.state.categories;
 
     const users: Array<IUser> = this.state.users;
 
+    const filteredUsers: Array<IUser> = this.state.filteredUsers;
+
     const skillDictionary: Array<SkillDictionaryItem> = this.state.skillDictionary;
+
+    const categoryView: JSX.Element[] | null = this.buildCategoryView(categories);
+
+    const userView: JSX.Element[] | null = this.buildUserView(filteredUsers, skillDictionary);
 
     return (
       <Container maxWidth='md'>
         {
-          this.state.isLoaded ? (
+          this.checkLoaded(this.state.isLoaded, categoryView, userView)  ? (
             <Grid container spacing={2}>
               <Grid item md={6}>
                 <Typography variant='h2'>
                   Skills
                 </Typography>
                 <TreeView
-                  aria-label='multi-select'
+                  aria-label='category-tree'
                   defaultCollapseIcon={<ExpandMore />}
                   defaultExpandIcon={<ChevronRight />}
-                  multiSelect
+                  onNodeSelect={(event: SyntheticEvent, nodeId: string) => this.filterUsers(users, skillDictionary, nodeId)}
                 >
-                  {this.buildTreeView(categories)}
+                  {categoryView}
                 </TreeView>
               </Grid>
               <Grid item lg={6}>
@@ -182,12 +214,12 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
                   Users
                 </Typography>
                 <TreeView
-                  aria-label='multi-select'
+                  aria-label='users-tree'
                   defaultCollapseIcon={<ExpandMore />}
                   defaultExpandIcon={<ChevronRight />}
                   multiSelect
                 >
-                  {this.buildUserList(users, skillDictionary)}
+                  {userView}
                 </TreeView>
               </Grid>
             </Grid>
