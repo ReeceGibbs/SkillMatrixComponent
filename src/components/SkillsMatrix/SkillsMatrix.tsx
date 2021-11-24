@@ -1,7 +1,8 @@
-import { ChevronRight, ExpandMore, ThirtyFpsSelectSharp } from '@mui/icons-material';
+import { ChevronRight, ExpandMore, ScoreSharp } from '@mui/icons-material';
 import { TreeItem, TreeView } from '@mui/lab';
-import { Box, Container, Grid, LinearProgress, Typography, useScrollTrigger } from '@mui/material';
+import { Box, Container, Grid, LinearProgress, Typography } from '@mui/material';
 import React, { SyntheticEvent } from 'react';
+import { createNull } from 'typescript';
 import { ICategory, SkillDictionaryItem } from '../../models/ICategory';
 import { IUser } from '../../models/IUser';
 
@@ -125,6 +126,15 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
   //a function that will be used to get a list of users
   buildUserView(users: Array<IUser>, skillDictionary: Array<SkillDictionaryItem>) {
 
+    //we want to order our users' scores by how good they are
+    users.forEach(user => {
+
+      if (user.scores) {
+
+        user.scores.sort((first, second) => (first.score < second.score) ? 1 : -1);
+      }
+    });
+
     return ( 
       users.map( (user, index) => {
 
@@ -141,7 +151,13 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
                   user.scores.map( (score, scoreIndex) => {
 
                     return (
-                      <TreeItem nodeId={`category_${scoreIndex.toString()}`} label={(skillDictionary.find(skill => skill.id === score.category_id)?.name)} />
+
+                      score.score > 0 ?
+                        <TreeItem 
+                          nodeId={`category_${scoreIndex.toString()}`} 
+                          label={`${(skillDictionary.find(skill => skill.id === score.category_id)?.name)} - ${score.score}`}
+                        /> :
+                        null                        
                     );
                   })
                 }
@@ -197,7 +213,10 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
           this.checkLoaded(this.state.isLoaded, categoryView, userView)  ? (
             <Grid container spacing={2}>
               <Grid item md={6}>
-                <Typography variant='h2'>
+                <Typography 
+                  variant='h2'
+                  sx = {{ color: '#3f51b5' }}
+                >
                   Skills
                 </Typography>
                 <TreeView
@@ -210,7 +229,10 @@ class SkillsMatrix extends React.Component<SkillsMatrixProps, SkillsMatrixState>
                 </TreeView>
               </Grid>
               <Grid item lg={6}>
-                <Typography variant='h2'>
+                <Typography 
+                  variant='h2'
+                  sx = {{ color: '#3f51b5' }}
+                >
                   Users
                 </Typography>
                 <TreeView
